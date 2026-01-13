@@ -17,6 +17,8 @@ KartholOS
 │   └── os-image.bin
 └── src
     └── boot
+        ├── gdt.asm
+        ├── print_pm.asm
         ├── stage1.asm
         └── stage2.asm
 ```
@@ -27,12 +29,12 @@ KartholOS
 
 The bootloader performs the following steps:
 
-1. Starts execution at memory address `0x7C00` (BIOS standard).
-2. Runs in **16-bit real mode**.
-3. Initializes segment registers and stack.
-4. Prints `Hello, World!` using BIOS interrupt `INT 0x10`.
-5. Enters an infinite loop.
-6. Ends with the mandatory boot signature `0xAA55`.
+1. **Stage 1**: Starts at `0x7C00`, resets disk, loads Stage 2, and jumps to it.
+2. **Stage 2**:
+   - Loads the **GDT** (Global Descriptor Table).
+   - Switches to **32-bit Protected Mode**.
+   - Prints a success message to video memory (`0xb8000`).
+   - Hangs (infinite loop) waiting for a kernel.
 
 ---
 
@@ -87,7 +89,7 @@ make
 This will generate:
 
 ```
-build/boot.bin
+build/os-image.bin
 ```
 
 ---
@@ -103,7 +105,9 @@ make run
 You should see:
 
 ```
-Hello, World!
+KartholOS Boot...
+Loading Stage 2...
+Successfully landed in 32-bit Protected Mode
 ```
 
 printed in the emulator window.
@@ -122,11 +126,10 @@ make clean
 
 ## Current Limitations
 
-- Single-stage bootloader
-- BIOS-only (no UEFI support)
-- 16-bit real mode only
 - No kernel or filesystem
-- No hardware abstraction
+- No hardware abstraction (Keyboard, etc.)
+- No paging (Virtual Memory)
+- No user space (Ring 3)
 
 ---
 
@@ -147,13 +150,15 @@ make clean
 - [x] Implement First Stage Bootloader (512 bytes)
 - [x] Implement Second Stage Bootloader
 - [x] Load code from disk beyond the 512-byte limit
+- [x] Switch to 32-bit Protected Mode (GDT, VGA Driver)
 
 ---
 
 ## Next Steps
 
-- Switch to **32-bit Protected Mode**
 - Implement a minimal **C Kernel**
+- Create a basic **VGA Driver** (Expand existing one)
+- Handle **Interrupts (IDT)**
 - Read keyboard input
 
 ---
