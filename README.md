@@ -14,10 +14,11 @@ KartholOS
 ├── Makefile
 ├── README.md
 ├── build
-│   └── boot.bin
+│   └── os-image.bin
 └── src
     └── boot
-        └── boot.asm
+        ├── stage1.asm
+        └── stage2.asm
 ```
 
 ---
@@ -134,18 +135,26 @@ make clean
 - Understand the BIOS boot process
 - Learn x86 real-mode assembly
 - Understand boot sector layout (512-byte constraint)
-- Prepare for multi-stage OS development
-- Build foundation knowledge for kernel development
+- Implement multi-stage booting
+- Read data from disk using BIOS interrupts
+
+---
+
+## Completed Milestones
+
+- [x] Create a bootable disk image
+- [x] Print text using BIOS interrupts
+- [x] Implement First Stage Bootloader (512 bytes)
+- [x] Implement Second Stage Bootloader
+- [x] Load code from disk beyond the 512-byte limit
 
 ---
 
 ## Next Steps
 
-- Add a second-stage bootloader
-- Load code beyond 512 bytes
-- Switch to protected mode
-- Implement a minimal kernel
-- Add basic screen and keyboard drivers
+- Switch to **32-bit Protected Mode**
+- Implement a minimal **C Kernel**
+- Read keyboard input
 
 ---
 
