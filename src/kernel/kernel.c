@@ -1,6 +1,8 @@
 #include "../drivers/screen.h"
+#include "splash.h"
 
 void kernel_main() {
+  show_splash();
   clear_screen();
   print_string("Hello from Kernel!\n");
   print_string("Welcome to KartholOS.\n");

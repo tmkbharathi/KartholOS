@@ -36,7 +36,10 @@ $(BUILD_DIR)/kernel_entry.o: $(KERNEL_DIR)/kernel_entry.asm
 $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c
 	$(CC) -ffreestanding -m32 -g -c $< -o $@
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/ports.o $(BUILD_DIR)/screen.o $(BUILD_DIR)/kernel.o
+$(BUILD_DIR)/splash.o: $(KERNEL_DIR)/splash.c
+	$(CC) -ffreestanding -m32 -g -c $< -o $@
+
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/ports.o $(BUILD_DIR)/screen.o $(BUILD_DIR)/splash.o $(BUILD_DIR)/kernel.o
 	$(LD) -o $@.tmp -Ttext 0x1000 $^ 
 	$(OBJCOPY) -O binary $@.tmp $@
 	rm $@.tmp

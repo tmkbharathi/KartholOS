@@ -63,6 +63,12 @@ Located in `src/drivers/screen.c`:
 - **Scrolling**: Automatically scrolls text up when the screen fills.
 - **Printing**: Supports basic string and character printing with correct cursor updates.
 
+### Boot Splash Screen
+Located in `src/kernel/splash.c`:
+- **ASCII Art**: Displays a custom "KartholOS" logo on boot.
+- **Animation**: Shows a spinning loading indicator.
+- **Implementation**: Uses a simple busy-wait delay loop to create the animation effect before clearing the screen for the main kernel.
+
 ---
 
 ## Prerequisites
@@ -181,6 +187,7 @@ make clean
 - [x] Switch to 32-bit Protected Mode (GDT, VGA Driver)
 - [x] Implement a minimal **C Kernel**
 - [x] Implement **VGA Screen Driver** (Basic string printing, scrolling)
+- [x] Implement **Boot Splash Screen** (ASCII Logo, Loading Animation)
 
 ---
 
