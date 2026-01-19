@@ -5,14 +5,11 @@ LD = ld
 OBJCOPY = objcopy
 QEMU = qemu-system-x86_64
 
-
-
 # Paths
 SRC_DIR = src/boot
 KERNEL_DIR = src/kernel
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/os-image.bin
-
 
 # Default target
 all: $(TARGET)
@@ -25,6 +22,13 @@ $(BUILD_DIR)/stage1.bin: $(SRC_DIR)/stage1.asm
 $(BUILD_DIR)/stage2.bin: $(SRC_DIR)/stage2.asm
 	$(ASM) -f bin $< -o $@
 
+# Drivers
+$(BUILD_DIR)/ports.o: src/drivers/ports.c
+	$(CC) -ffreestanding -m32 -g -c $< -o $@
+
+$(BUILD_DIR)/screen.o: src/drivers/screen.c
+	$(CC) -ffreestanding -m32 -g -c $< -o $@
+
 # Kernel
 $(BUILD_DIR)/kernel_entry.o: $(KERNEL_DIR)/kernel_entry.asm
 	$(ASM) -f win32 $< -o $@
@@ -32,7 +36,7 @@ $(BUILD_DIR)/kernel_entry.o: $(KERNEL_DIR)/kernel_entry.asm
 $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c
 	$(CC) -ffreestanding -m32 -g -c $< -o $@
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/ports.o $(BUILD_DIR)/screen.o $(BUILD_DIR)/kernel.o
 	$(LD) -o $@.tmp -Ttext 0x1000 $^ 
 	$(OBJCOPY) -O binary $@.tmp $@
 	rm $@.tmp
@@ -44,9 +48,6 @@ $(BUILD_DIR)/pad.exe: src/misc/pad.c
 $(TARGET): $(BUILD_DIR)/stage1.bin $(BUILD_DIR)/stage2.bin $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/pad.exe
 	cat $(BUILD_DIR)/stage1.bin $(BUILD_DIR)/stage2.bin $(BUILD_DIR)/kernel.bin > $@
 	$(BUILD_DIR)/pad.exe $@
-
-
-
 
 # Run the OS
 run: $(TARGET)

@@ -21,6 +21,11 @@ KartholOS
     │   ├── print_pm.asm
     │   ├── stage1.asm
     │   └── stage2.asm
+    ├── drivers
+    │   ├── ports.c
+    │   ├── ports.h
+    │   ├── screen.c
+    │   └── screen.h
     ├── kernel
     │   ├── kernel.c
     │   └── kernel_entry.asm
@@ -40,6 +45,23 @@ The bootloader performs the following steps:
    - Switches to **32-bit Protected Mode**.
    - Prints a success message to video memory (`0xb8000`).
    - Hangs (infinite loop) waiting for a kernel.
+
+---
+
+## Kernel & Drivers
+
+### C Kernel
+The kernel entry point is `kernel_main()` (in `src/kernel/kernel.c`). It currently:
+- Initializes the video driver.
+- Clears the screen.
+- Prints welcome messages to indicate successful protected mode entry.
+
+### VGA Screen Driver
+Located in `src/drivers/screen.c`:
+- **Video Memory**: Directly writes to `0xb8000` VGA buffer.
+- **Port I/O**: Uses inline assembly (`in`/`out`) to communicate with screen control ports (`0x3d4`, `0x3d5`) for cursor management.
+- **Scrolling**: Automatically scrolls text up when the screen fills.
+- **Printing**: Supports basic string and character printing with correct cursor updates.
 
 ---
 
@@ -158,6 +180,7 @@ make clean
 - [x] Load code from disk beyond the 512-byte limit
 - [x] Switch to 32-bit Protected Mode (GDT, VGA Driver)
 - [x] Implement a minimal **C Kernel**
+- [x] Implement **VGA Screen Driver** (Basic string printing, scrolling)
 
 ---
 
@@ -165,7 +188,7 @@ make clean
 
 - **Interrupts (IDT)**: Handle hardware interrupts (keyboard, timer).
 - **Keyboard Driver**: Read input from the user.
-- **Screen Driver**: Implement proper scrolling and string printing (printf).
+- **String Formatting**: Implement `printf` and other string utilities.
 - **64-bit Long Mode**: Switch from 32-bit Protected Mode to 64-bit.
 - **Memory Management**: Implement Paging and Heap (malloc/free).
 
