@@ -16,11 +16,16 @@ KartholOS
 ├── build
 │   └── os-image.bin
 └── src
-    └── boot
-        ├── gdt.asm
-        ├── print_pm.asm
-        ├── stage1.asm
-        └── stage2.asm
+    ├── boot
+    │   ├── gdt.asm
+    │   ├── print_pm.asm
+    │   ├── stage1.asm
+    │   └── stage2.asm
+    ├── kernel
+    │   ├── kernel.c
+    │   └── kernel_entry.asm
+    └── misc
+        └── pad.c
 ```
 
 ---
@@ -105,9 +110,10 @@ make run
 You should see:
 
 ```
-KartholOS Boot...
-Loading Stage 2...
+123 Done. Jumping to Stage 2...
+S2
 Successfully landed in 32-bit Protected Mode
+(Followed by a row of 'X's at the top of the screen)
 ```
 
 printed in the emulator window.
@@ -126,7 +132,7 @@ make clean
 
 ## Current Limitations
 
-- No kernel or filesystem
+- No filesystem
 - No hardware abstraction (Keyboard, etc.)
 - No paging (Virtual Memory)
 - No user space (Ring 3)
@@ -151,15 +157,17 @@ make clean
 - [x] Implement Second Stage Bootloader
 - [x] Load code from disk beyond the 512-byte limit
 - [x] Switch to 32-bit Protected Mode (GDT, VGA Driver)
+- [x] Implement a minimal **C Kernel**
 
 ---
 
 ## Next Steps
 
-- Implement a minimal **C Kernel**
-- Create a basic **VGA Driver** (Expand existing one)
-- Handle **Interrupts (IDT)**
-- Read keyboard input
+- **Interrupts (IDT)**: Handle hardware interrupts (keyboard, timer).
+- **Keyboard Driver**: Read input from the user.
+- **Screen Driver**: Implement proper scrolling and string printing (printf).
+- **64-bit Long Mode**: Switch from 32-bit Protected Mode to 64-bit.
+- **Memory Management**: Implement Paging and Heap (malloc/free).
 
 ---
 

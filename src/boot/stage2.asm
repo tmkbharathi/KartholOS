@@ -1,4 +1,9 @@
 [org 0x7E00]
+    mov ah, 0x0e
+    mov al, 'S'
+    int 0x10
+    mov al, '2'
+    int 0x10
     jmp switch_to_pm
 
 %include "src/boot/gdt.asm"
@@ -32,6 +37,10 @@ init_pm:
 BEGIN_PM:
     mov ebx, MSG_PROT_MODE
     call print_string_pm
+    
+    call 0x1000             ; Call the kernel entry point
     jmp $
 
 MSG_PROT_MODE db "Successfully landed in 32-bit Protected Mode", 0
+
+times 512-($-$$) db 0       ; Pad to 512 bytes
