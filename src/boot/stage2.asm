@@ -1,9 +1,4 @@
 [org 0x7E00]
-    mov ah, 0x0e
-    mov al, 'S'
-    int 0x10
-    mov al, '2'
-    int 0x10
     jmp switch_to_pm
 
 %include "src/boot/gdt.asm"

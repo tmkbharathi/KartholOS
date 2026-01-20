@@ -75,6 +75,13 @@ int print_char(char c, int col, int row, char attr) {
   if (c == '\n') {
     int rows = offset / (2 * MAX_COLS);
     offset = get_offset(0, rows + 1);
+  } else if (c == 0x08) { /* Backspace */
+    if (offset > 0) {
+      offset -= 2;
+      /* Destructive backspace */
+      vidmem[offset] = ' ';
+      vidmem[offset + 1] = attr;
+    }
   } else {
     vidmem[offset] = c;
     vidmem[offset + 1] = attr;

@@ -201,6 +201,38 @@ make clean
 
 ---
 
+---
+
+## Recent Changes (Refactoring & Fixes)
+
+### 1. Build System (Makefile)
+- **Dynamic Source Discovery**: Replaced manual file listing with `wildcard` functions.
+  - Automatically detects and compiles all `.c` files in `src/kernel/` and `src/drivers/`.
+  - Simplifies adding new files (no need to edit Makefile).
+- **Clean Output**: Object files are now organized in `build/kernel` and `build/drivers` mirroring the source tree.
+
+### 2. Bootloader (Stage 1)
+- **LBA Disk Reading**: Replaced hardcoded "chunk-based" reading with a robust **LBA-to-CHS** loop.
+  - Can now read kernels of any size (currently set to 50 sectors) without worrying about cylinder/head boundaries.
+- **Bug Fixes**:
+  - **Head Selection**: Fixed a critical bug where the bootloader was reading from Head 1 instead of Head 0 for Stage 2.
+  - **Segment Initialization**: Added explicit initialization of `DS`, `ES`, `SS`, `SP` to ensure safe memory access.
+  - **Drive ID**: Removed forced Drive ID (was `dl=0`), now correctly using the BIOS-provided Boot Drive ID.
+
+### 3. Drivers & UI
+- **Screen Driver**: Implemented **Backspace (`\b`)** support.
+  - `0x08` character now moves the cursor back and erases the character (destructive backspace).
+- **Splash Screen**: Updated the spinner animation to use `\b` for smoother, coordinate-independent rendering.
+
+### 4. Debugging Case Study: The "Head 1" Bug
+During the LBA refactor, the bootloader entered a reset loop. We used the following methodology to solve it:
+1. **Trap**: Added an infinite loop in Stage 2 (`jmp $`) to see if it loaded. It did not.
+2. **Debug Prints**: Added a hex dump function to Stage 1 to print the first 2 bytes at the destination memory address (`0x7E00`) before jumping.
+3. **The Clue**: The output `Mem@7E00: 00 00` revealed that memory was empty (zeros) instead of containing Stage 2 code.
+4. **The Fix**: This pointed to a read failure. Upon reviewing the LBA code, we found `mov dh, 1` (Head 1) was incorrectly used instead of `mov dh, 0`. Correcting this to Head 0 loaded the data correctly.
+
+---
+
 ## License
 
 This project is provided for educational purposes.  

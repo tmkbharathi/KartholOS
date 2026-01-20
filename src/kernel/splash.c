@@ -48,26 +48,8 @@ void show_splash() {
     // Wait
     delay(40000000);
 
-    // Backspace equivalent: move cursor back one char
-    // Since we don't have backspace support in print_string yet,
-    // we can cheat by printing a backspace char if driver supported it,
-    // or just use print_at if we tracked position.
-    // For simplicity in this driver, let's just use print_at relative to
-    // current pos? Actually, our driver doesn't expose "get current pos" easily
-    // to C api yet except implicitly. Let's implement a simple cheat: print,
-    // wait, then print backspace ch (0x08) Note: Our currently implemented
-    // print_char does NOT handle backspace (0x08). Let's rely on print_at.
-
-    // Hardcoded position for the spinner:
-    // "Loading... " is 11 chars.
-    // Centered roughly:
-    // "                                     Loading... " -> 37 spaces + 11
-    // chars = 48 So spinner is at col 48. Row: 8 (padding) + 5 (logo) + 2
-    // (newlines) = 15 approx. Let's just assume we are at the right place.
-    // Better way: use print_at with explicit coordinates for the spinner.
-
-    // Row 15 (0-indexed), Col 48
-    print_at(anim_char, 48, 15);
+    // Use backspace to erase the character
+    print_string("\b");
   }
 
   clear_screen();

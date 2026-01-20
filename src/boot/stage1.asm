@@ -1,114 +1,147 @@
-[org 0x7C00]                 ; Tell assembler that BIOS loads this code at 0x7C00
-bits 16                      ; BIOS starts execution in 16-bit real mode
+[org 0x7C00]
+KERNEL_OFFSET equ 0x1000
 
-xor ax, ax                   ; AX = 0
-mov ds, ax                   ; Set Data Segment to 0 so DS:BX points correctly
-mov ss, ax                   ; Set Stack Segment to 0 for safe stack operations
-mov es, ax                   ; Set Extra Segment to 0 (Critical for BIOS disk reads)
-mov sp, 0x8000               ; Initialize Stack Pointer at 0x8000 (safe area)
-mov [BOOT_DRIVE], dl         ; BIOS stores boot drive in DL, save it
+    jmp 0:start
 
-mov bx, HelloString           ; Load address of the string into BX
-call print_string             ; Call function to print the string
+start:
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x9000
 
-mov bx, LoadingMsg
-call print_string
+    mov [BOOT_DRIVE], dl
 
-; Reset Disk System
-mov ah, 0
-mov dl, [BOOT_DRIVE]
-int 0x13
-jc disk_error
+    mov bx, MSG_REAL_MODE
+    call print_string
 
-; Read Second Stage from Disk
-mov ah, 0x02        ; BIOS read sector function
-mov al, 1           ; Read 1 sector (Stage 2)
-mov ch, 0           ; Cylinder 0
-mov dh, 0           ; Head 0
-mov cl, 2           ; Start from Sector 2
-mov dl, [BOOT_DRIVE] ; Drive number
-mov bx, 0x7E00      ; Load to 0x7E00
-int 0x13
-jc disk_error
+    call load_kernel
 
-; Read Kernel - Chunk 1
-mov ah, 0x0e
-mov al, '1'
-int 0x10
+    mov bx, MSG_DONE
+    call print_string
 
-mov ah, 0x02
-mov al, 15          ; Read 15 sectors
-mov ch, 0
-mov dh, 0
-mov cl, 3           ; Start Sector 3
-mov dl, [BOOT_DRIVE]
-mov bx, 0x1000      ; Dest 0x1000
-int 0x13
-jc disk_error
+    jmp 0x7E00          ; Jump to Stage 2
 
-; Read Kernel - Chunk 2
-mov ah, 0x0e
-mov al, '2'
-int 0x10
+; Code inlined below.
 
-mov ah, 0x02
-mov al, 18
-mov ch, 0
-mov dh, 1           ; Head 1
-mov cl, 1           ; Sector 1
-mov dl, [BOOT_DRIVE]
-mov bx, 0x1000 + (15 * 512) ; Dest: 0x2E00
-int 0x13
-jc disk_error
 
-; Read Kernel - Chunk 3
-mov ah, 0x0e
-mov al, '3'
-int 0x10
+[bits 16]
+load_kernel:
+    mov bx, MSG_LOAD_KERNEL
+    call print_string
 
-mov ah, 0x02
-mov al, 17          ; 15+18+17 = 50 sectors total
-mov ch, 1           ; Cylinder 1
-mov dh, 0           ; Head 0
-mov cl, 1           ; Sector 1
-mov dl, [BOOT_DRIVE]
-mov bx, 0x1000 + (33 * 512) ; Dest: 0x5200
-int 0x13
-jc disk_error
+    ; Load Stage 2 (1 sector at LBA 1) -> 0x7E00
+    mov bx, 0x7E00
+    mov dh, 0           ; Head 0
+    mov dl, [BOOT_DRIVE]
+    mov cl, 2           ; Start from sector 2 (LBA 1)
+    mov ch, 0
+    mov ah, 0x02
+    mov al, 1
+    int 0x13
+    jc stage2_error
 
-mov bx, DoneMsg
-call print_string
+    ; Load Kernel (50 sectors at LBA 2 -> Sector 3) -> KERNEL_OFFSET
+    mov bx, KERNEL_OFFSET
+    mov dh, 50          ; Read 50 sectors
+    mov dl, [BOOT_DRIVE]
+    call disk_load_lba  ; Call inline function
+    
+    ret
 
-jmp 0x7E00          ; Jump to second stage
+BOOT_DRIVE db 0
+MSG_REAL_MODE db "Started in 16-bit Real Mode", 13, 10, 0
+MSG_LOAD_KERNEL db "Loading Kernel...", 13, 10, 0
+MSG_DONE db "Done. Jumping to Stage 2...", 13, 10, 0
+MSG_DISK_ERROR db "Disk read error!", 0
+MSG_STAGE2_ERROR db "Disk Error (Stage2)!", 0
+
+; LBA Read Buffer
+; Input: BX = Destination, DH = Sector Count
+; Reads from LBA 2 (Sector 3) hardcoded start for Kernel
+disk_load_lba:
+    push dx
+    push si
+    push di
+    push bp
+    
+    ; Start at LBA 2 => Sector 3, Head 0, Cylinder 0
+    mov si, 3           ; Sector
+    mov di, 0           ; Head
+    mov bp, 0           ; Cylinder
+
+.loop:
+    push dx
+    
+    ; Setup registers for int 0x13
+    ; We need to move values from SI(Sector), DI(Head), BP(Cylinder) 
+    ; to CL, DH, CH respectively.
+    ; Since we can't move 16-bit regs to 8-bit regs directly, use AX.
+    
+    mov ax, bp      ; Cylinder
+    mov ch, al
+    
+    mov ax, si      ; Sector
+    mov cl, al
+    
+    mov ax, di      ; Head
+    mov dh, al
+    
+    mov dl, [BOOT_DRIVE]
+    mov ah, 0x02
+    mov al, 1
+    int 0x13
+    jc disk_error
+
+    pop dx
+    add bx, 512         ; Next buffer position
+    
+    ; Next CHS
+    inc si
+    cmp si, 18          ; Max Sector 18
+    jna .next           ; If <= 18, OK
+    
+    mov si, 1           ; Reset Sector to 1
+    inc di              ; Next Head
+    cmp di, 1           ; Max Head 1 (indices 0, 1)
+    jna .next           ; If <= 1, OK
+    
+    mov di, 0           ; Reset Head to 0
+    inc bp              ; Next Cylinder
+    
+.next:
+    dec dh
+    cmp dh, 0
+    jne .loop
+
+    pop bp
+    pop di
+    pop si
+    pop dx
+    ret
 
 disk_error:
-    mov bx, DiskErrorMsg
+    mov bx, MSG_DISK_ERROR
+    call print_string
+    jmp $
+
+stage2_error: ; Added
+    mov bx, MSG_STAGE2_ERROR
     call print_string
     jmp $
 
 print_string:
-    mov ah, 0x0E              ; BIOS video service: teletype output function
-
+    mov ah, 0x0E
 .loop:
-    mov al, [bx]              ; Load current character from DS:BX into AL
-    cmp al, 0                 ; Check for null terminator (end of string)
-    je .done                  ; If zero, exit the function
-    int 0x10                  ; BIOS interrupt to print character in AL
-    inc bx                    ; Move to next character in the string
-    jmp .loop                 ; Repeat for next character
-
+    mov al, [bx]
+    cmp al, 0
+    je .done
+    int 0x10
+    inc bx
+    jmp .loop
 .done:
-    ret                       ; Return to caller using address from stack
+    ret
 
-BOOT_DRIVE: db 0
-HelloString:
-    db 'KartholOS Boot...', 13, 10, 0
-LoadingMsg:
-    db 'Loading Stage 2...', 13, 10, 0
-DiskErrorMsg:
-    db 'Disk Read Error!', 0
-DoneMsg:
-    db ' Done. Jumping to Stage 2...', 13, 10, 0
+times 510-($-$$) db 0
+dw 0xaa55
 
-times 510-($-$$) db 0         ; Pad remaining bytes with zeros up to 510 bytes
-dw 0xAA55                     ; Boot signature required by BIOS
