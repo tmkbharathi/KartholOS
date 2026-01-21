@@ -28,7 +28,14 @@ KartholOS
     │   └── screen.h
     ├── kernel
     │   ├── kernel.c
-    │   └── kernel_entry.asm
+    │   ├── kernel_entry.asm
+    │   ├── splash.c
+    │   └── splash.h
+    ├── libc
+    │   ├── stdio.c
+    │   ├── stdio.h
+    │   ├── string.c
+    │   └── string.h
     └── misc
         └── pad.c
 ```
@@ -68,6 +75,13 @@ Located in `src/kernel/splash.c`:
 - **ASCII Art**: Displays a custom "KartholOS" logo on boot.
 - **Animation**: Shows a spinning loading indicator.
 - **Implementation**: Uses a simple busy-wait delay loop to create the animation effect before clearing the screen for the main kernel.
+
+### Standard Library (Libc)
+Located in `src/libc`:
+- **stdio**: Implements `printf`, `puts`, `putchar`.
+  - Supports format specifiers: `%d` (int), `%x` (hex), `%s` (string), `%c` (char).
+- **string**: Implements common string and memory functions:
+  - `memcpy`, `memset`, `strlen`, `strcpy`, `strcmp`, `strcat`, `reverse`, `atoi`, `itoa`.
 
 ---
 
@@ -138,10 +152,7 @@ make run
 You should see:
 
 ```
-123 Done. Jumping to Stage 2...
-S2
-Successfully landed in 32-bit Protected Mode
-(Followed by a row of 'X's at the top of the screen)
+Testing printf: 42, 1234, Success!
 ```
 
 printed in the emulator window.
@@ -188,6 +199,7 @@ make clean
 - [x] Implement a minimal **C Kernel**
 - [x] Implement **VGA Screen Driver** (Basic string printing, scrolling)
 - [x] Implement **Boot Splash Screen** (ASCII Logo, Loading Animation)
+- [x] Implement **Standard Library (Libc)** (`printf`, `memcpy`, strings)
 
 ---
 
@@ -195,23 +207,25 @@ make clean
 
 - **Interrupts (IDT)**: Handle hardware interrupts (keyboard, timer).
 - **Keyboard Driver**: Read input from the user.
-- **String Formatting**: Implement `printf` and other string utilities.
 - **64-bit Long Mode**: Switch from 32-bit Protected Mode to 64-bit.
 - **Memory Management**: Implement Paging and Heap (malloc/free).
 
 ---
 
----
-
 ## Recent Changes (Refactoring & Fixes)
 
-### 1. Build System (Makefile)
+### 1. Standard Library Implementation
+- **stdio.h/c**: Added `printf` implementation interacting with the screen driver.
+- **string.h/c**: Added essential string and memory operations.
+- **Makefile Update**: Included `src/libc` in the compilation process.
+
+### 2. Build System (Makefile)
 - **Dynamic Source Discovery**: Replaced manual file listing with `wildcard` functions.
-  - Automatically detects and compiles all `.c` files in `src/kernel/` and `src/drivers/`.
+  - Automatically detects and compiles all `.c` files in `src/kernel/`, `src/drivers/`, and `src/libc/`.
   - Simplifies adding new files (no need to edit Makefile).
 - **Clean Output**: Object files are now organized in `build/kernel` and `build/drivers` mirroring the source tree.
 
-### 2. Bootloader (Stage 1)
+### 3. Bootloader (Stage 1)
 - **LBA Disk Reading**: Replaced hardcoded "chunk-based" reading with a robust **LBA-to-CHS** loop.
   - Can now read kernels of any size (currently set to 50 sectors) without worrying about cylinder/head boundaries.
 - **Bug Fixes**:
@@ -219,17 +233,10 @@ make clean
   - **Segment Initialization**: Added explicit initialization of `DS`, `ES`, `SS`, `SP` to ensure safe memory access.
   - **Drive ID**: Removed forced Drive ID (was `dl=0`), now correctly using the BIOS-provided Boot Drive ID.
 
-### 3. Drivers & UI
+### 4. Drivers & UI
 - **Screen Driver**: Implemented **Backspace (`\b`)** support.
   - `0x08` character now moves the cursor back and erases the character (destructive backspace).
 - **Splash Screen**: Updated the spinner animation to use `\b` for smoother, coordinate-independent rendering.
-
-### 4. Debugging Case Study: The "Head 1" Bug
-During the LBA refactor, the bootloader entered a reset loop. We used the following methodology to solve it:
-1. **Trap**: Added an infinite loop in Stage 2 (`jmp $`) to see if it loaded. It did not.
-2. **Debug Prints**: Added a hex dump function to Stage 1 to print the first 2 bytes at the destination memory address (`0x7E00`) before jumping.
-3. **The Clue**: The output `Mem@7E00: 00 00` revealed that memory was empty (zeros) instead of containing Stage 2 code.
-4. **The Fix**: This pointed to a read failure. Upon reviewing the LBA code, we found `mov dh, 1` (Head 1) was incorrectly used instead of `mov dh, 0`. Correcting this to Head 0 loaded the data correctly.
 
 ---
 

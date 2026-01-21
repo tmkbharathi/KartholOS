@@ -12,13 +12,16 @@ BOOT_DIR = $(SRC_DIR)/boot
 KERNEL_DIR = $(SRC_DIR)/kernel
 DRIVERS_DIR = $(SRC_DIR)/drivers
 
+LIBS_DIR = $(SRC_DIR)/libc
+
 # Output
 TARGET = $(BUILD_DIR)/os-image.bin
 
 # Sources using wildcards
 KERNEL_SOURCES = $(wildcard $(KERNEL_DIR)/*.c)
 DRIVERS_SOURCES = $(wildcard $(DRIVERS_DIR)/*.c)
-C_SOURCES = $(KERNEL_SOURCES) $(DRIVERS_SOURCES)
+LIBS_SOURCES = $(wildcard $(LIBS_DIR)/*.c)
+C_SOURCES = $(KERNEL_SOURCES) $(DRIVERS_SOURCES) $(LIBS_SOURCES)
 
 # Object files (mirroring source structure in build dir)
 # e.g., src/kernel/main.c -> build/kernel/main.o
