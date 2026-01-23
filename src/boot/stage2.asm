@@ -6,6 +6,16 @@
 
 [bits 16]
 switch_to_pm:
+    ; Enable A20 Line
+    ; 1. Try BIOS method
+    mov ax, 0x2401
+    int 0x15
+
+    ; 2. Try Fast A20 method (Port 0x92) as backup/reinforcement
+    in al, 0x92
+    or al, 2
+    out 0x92, al
+
     cli                     ; 1. Disable interrupts
     lgdt [gdt_descriptor]   ; 2. Load the GDT descriptor
     

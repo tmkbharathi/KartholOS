@@ -32,6 +32,8 @@ KartholOS
     │   ├── splash.c
     │   └── splash.h
     ├── libc
+    │   ├── mem.c
+    │   ├── mem.h
     │   ├── stdio.c
     │   ├── stdio.h
     │   ├── string.c
@@ -48,6 +50,7 @@ The bootloader performs the following steps:
 
 1. **Stage 1**: Starts at `0x7C00`, resets disk, loads Stage 2, and jumps to it.
 2. **Stage 2**:
+   - Enables **A20 Line** (Critical for assessing memory > 1MB).
    - Loads the **GDT** (Global Descriptor Table).
    - Switches to **32-bit Protected Mode**.
    - Prints a success message to video memory (`0xb8000`).
@@ -60,6 +63,7 @@ The bootloader performs the following steps:
 ### C Kernel
 The kernel entry point is `kernel_main()` (in `src/kernel/kernel.c`). It currently:
 - Initializes the video driver.
+- Initializes the **Heap Manager**.
 - Clears the screen.
 - Prints welcome messages to indicate successful protected mode entry.
 
@@ -82,6 +86,9 @@ Located in `src/libc`:
   - Supports format specifiers: `%d` (int), `%x` (hex), `%s` (string), `%c` (char).
 - **string**: Implements common string and memory functions:
   - `memcpy`, `memset`, `strlen`, `strcpy`, `strcmp`, `strcat`, `reverse`, `atoi`, `itoa`.
+- **mem**: Implements **Heap Manager**:
+  - `malloc`, `free`.
+  - Simple Linked-List First-Fit Allocator.
 
 ---
 
@@ -200,6 +207,7 @@ make clean
 - [x] Implement **VGA Screen Driver** (Basic string printing, scrolling)
 - [x] Implement **Boot Splash Screen** (ASCII Logo, Loading Animation)
 - [x] Implement **Standard Library (Libc)** (`printf`, `memcpy`, strings)
+- [x] Implement **Heap Manager** (`malloc`, `free`)
 
 ---
 
@@ -208,24 +216,37 @@ make clean
 - **Interrupts (IDT)**: Handle hardware interrupts (keyboard, timer).
 - **Keyboard Driver**: Read input from the user.
 - **64-bit Long Mode**: Switch from 32-bit Protected Mode to 64-bit.
-- **Memory Management**: Implement Paging and Heap (malloc/free).
+- **Paging**: Implement Virtual Memory.
 
 ---
 
 ## Recent Changes (Refactoring & Fixes)
 
-### 1. Standard Library Implementation
+### 1. Heap Manager Implementation
+- **malloc/free**: Implemented a basic memory allocator in `src/libc/mem.c`.
+- **Integration**: Initialized in `kernel.c` to allow dynamic memory usage.
+
+### 2. A20 Line Fix (Critical Debugging)
+- **Issue**: Converting to Protected Mode and accessing memory above 1MB (e.g., `0x100000` for the Heap) caused a crash/reboot loop or silent failure.
+- **Root Cause**: The **A20 Line** was disabled by default.
+  - In legacy x86 mode, address `0x100000` wraps around to `0x00000` if the A20 line is off.
+  - Writing to the heap (`0x100000`) was unknowingly modifying the **IVT (Interrupt Vector Table)** and BIOS data area at `0x00000`, crashing the system.
+- **Fix**: Added A20 enablement code in `src/boot/stage2.asm`:
+  - **Method 1**: BIOS Interrupt `0x15` function `0x2401`.
+  - **Method 2**: Fallback to **Fast A20** (Port `0x92`) if BIOS fails.
+
+### 3. Standard Library Implementation
 - **stdio.h/c**: Added `printf` implementation interacting with the screen driver.
 - **string.h/c**: Added essential string and memory operations.
 - **Makefile Update**: Included `src/libc` in the compilation process.
 
-### 2. Build System (Makefile)
+### 4. Build System (Makefile)
 - **Dynamic Source Discovery**: Replaced manual file listing with `wildcard` functions.
   - Automatically detects and compiles all `.c` files in `src/kernel/`, `src/drivers/`, and `src/libc/`.
   - Simplifies adding new files (no need to edit Makefile).
 - **Clean Output**: Object files are now organized in `build/kernel` and `build/drivers` mirroring the source tree.
 
-### 3. Bootloader (Stage 1)
+### 5. Bootloader (Stage 1)
 - **LBA Disk Reading**: Replaced hardcoded "chunk-based" reading with a robust **LBA-to-CHS** loop.
   - Can now read kernels of any size (currently set to 50 sectors) without worrying about cylinder/head boundaries.
 - **Bug Fixes**:
@@ -233,7 +254,7 @@ make clean
   - **Segment Initialization**: Added explicit initialization of `DS`, `ES`, `SS`, `SP` to ensure safe memory access.
   - **Drive ID**: Removed forced Drive ID (was `dl=0`), now correctly using the BIOS-provided Boot Drive ID.
 
-### 4. Drivers & UI
+### 6. Drivers & UI
 - **Screen Driver**: Implemented **Backspace (`\b`)** support.
   - `0x08` character now moves the cursor back and erases the character (destructive backspace).
 - **Splash Screen**: Updated the spinner animation to use `\b` for smoother, coordinate-independent rendering.
